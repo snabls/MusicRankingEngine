@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Ranker Ultimate (Artist Fallback)</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent: #ffae00; /* Gold/Yellow */
+            --text: #ffffff;
+            --secondary-text: #b3b3b3;
+            --progress-bg: #333333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1 { margin-bottom: 20px; text-align: center; font-weight: 800; letter-spacing: -1px;}
+
+        /* Setup View */
+        #setup-view { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 15px; }
+        
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: var(--card-bg);
+            border: 1px solid #333;
+            color: var(--text);
+            padding: 15px;
+            border-radius: 12px;
+            resize: vertical;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+        
+        textarea:focus { border-color: var(--accent); }
+
+        button {
+            background-color: var(--accent);
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:hover { transform: scale(1.02); opacity: 0.9; }
+        button:disabled { background-color: #555; color: #aaa; cursor: not-allowed; transform: none; }
+
+        /* PREP VIEW */
+        #prep-view { display: none; width: 100%; max-width: 700px; flex-direction: column; gap: 20px; }
+        
+        .prep-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .prep-item {
+            display: flex;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .prep-item img { width: 50px; height: 50px; border-radius: 4px; margin-right: 15px; object-fit: cover; }
+        
+        .prep-info { flex-grow: 1; }
+        .prep-title { font-weight: bold; font-size: 0.95em; }
+        .prep-artist { font-size: 0.8em; color: var(--secondary-text); }
+        
+        .prep-status { display: flex; align-items: center; gap: 10px; }
+        
+        .status-badge {
+            font-size: 0.75em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #333;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-badge.ok { background: rgba(29, 185, 84, 0.2); color: #1db954; }
+        .status-badge.missing { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
+
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .btn-upload {
+            border: 1px solid #555;
+            color: white;
+            background-color: #333;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            cursor: pointer;
+        }
+
+        .btn-upload:hover { background-color: #444; }
+
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+
+        /* Comparison View */
+        #comparison-view { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
+        
+        .battle-arena {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            width: 100%;
+            flex-wrap: wrap;
+            position: relative;
+            transform: translateX(0);
+            opacity: 1;
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+        }
+
+        .slide-left-out { transform: translateX(-100px); opacity: 0; }
+        .slide-enter-from-right { transform: translateX(50px) scale(0.95); opacity: 0; transition: none; }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            width: 280px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.2s, border-color 0.2s;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover { border-color: var(--accent); transform: translateY(-5px); }
+        .card:active { transform: scale(0.98); }
+
+        .card img { 
+            width: 100%; 
+            aspect-ratio: 1/1; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            pointer-events: none;
+            background-color: #000;
+        }
+        
+        .song-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; line-height: 1.2; }
+        .artist-name { color: var(--secondary-text); font-size: 0.9em; margin-bottom: 15px; }
+
+        .play-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--accent);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 24px;
+            margin-top: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .play-btn:hover { background: var(--accent); color: black; border-color: var(--accent); }
+        .play-btn.disabled { opacity: 0.3; cursor: default; border-color: #444; color: #444; pointer-events: none; }
+
+        .vs-text { font-size: 1.5em; font-weight: 900; color: #333; font-style: italic; }
+
+        /* Progress Bar */
+        #progress-container { 
+            width: 100%; 
+            max-width: 500px; 
+            margin-top: 40px; 
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background-color: var(--progress-bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            color: var(--secondary-text);
+        }
+
+        /* Controls */
+        .controls-help {
+            margin-top: 15px;
+            font-size: 0.85em;
+            color: #666;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .key-badge {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #444;
+        }
+
+        #undo-btn {
+            background-color: transparent;
+            border: 1px solid #444;
+            color: var(--secondary-text);
+            padding: 8px 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #undo-btn:hover { border-color: var(--text); color: var(--text); background: rgba(255,255,255,0.05); transform: none; }
+        #undo-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #333; }
+
+        /* Results View */
+        #results-view { display: none; width: 100%; max-width: 600px; padding-bottom: 50px; }
+        
+        #results-capture-area {
+            background-color: var(--bg-color); 
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            background: var(--card-bg);
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        .rank-num { font-size: 1.2em; font-weight: 900; width: 40px; color: var(--accent); text-align: center;}
+        .rank-img { width: 60px; height: 60px; border-radius: 6px; margin-right: 15px; object-fit: cover; }
+        .rank-details { flex-grow: 1; }
+        
+        .no-preview-badge {
+            font-size: 0.7em;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-left: 10px;
+            display: inline-block;
+            vertical-align: middle;
+            background: rgba(255, 68, 68, 0.1);
+        }
+        .uploaded-badge { color: var(--accent); border-color: var(--accent); background: rgba(255, 174, 0, 0.1); }
+
+        .actions-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .full-width { grid-column: span 2; }
+        .btn-secondary { background-color: #333; color: white; }
+        .btn-secondary:hover { background-color: #444; }
+
+        /* Loader */
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .error-log { color: #f0ad4e; font-size: 0.9em; margin-top: 10px; white-space: pre-wrap; text-align: center;}
+
+    </style>
+</head>
+<body>
+
+    <h1>🎧 Music Ranker <span style="font-size:0.4em; vertical-align:middle; color:#666">Pro</span></h1>
+
+    <div id="setup-view">
+        <p>Enter songs (Artist - Title):</p>
+        <textarea id="input-list" placeholder="Angelina Mango - Caramè&#10;Queen - Bohemian Rhapsody&#10;My Demo Track - Untitled"></textarea>
+        <button id="find-btn" onclick="initSearch()">Find Songs</button>
+        <div id="loading-spinner" class="loader"></div>
+        <p id="status-msg" style="text-align: center; color: var(--secondary-text);"></p>
+    </div>
+
+    <div id="prep-view">
+        <h3 style="text-align:center; margin:0;">Review & Upload Audio</h3>
+        <p style="text-align:center; font-size:0.9em; color:#888;">Audio missing? Upload your own file or rank without it.</p>
+        
+        <div class="prep-list" id="prep-list-container"></div>
+
+        <button onclick="startBattle()">⚔️ Start Battle</button>
+    </div>
+
+    <div id="comparison-view">
+        <h2 id="battle-title" style="margin-bottom: 30px;">Which one do you prefer?</h2>
+        
+        <div class="battle-arena" id="arena">
+            <div class="card" id="card-a" onclick="handleChoice('a')">
+                <img src="" id="img-a" alt="Cover A" crossorigin="anonymous">
+                <div class="song-title" id="title-a">Song A</div>
+                <div class="artist-name" id="artist-a">Artist A</div>
+                <button class="play-btn" id="btn-a" onclick="toggleAudio(event, 'audio-a')">▶</button>
+                <audio id="audio-a"></audio>
+            </div>
+
+            <div class="vs-text">VS</div>
+
+            <div class="card" id="card-b" onclick="handleChoice('b')">
+                <img src="" id="img-b" alt="Cover B" crossorigin="anonymous">
+                <div class="song-title" id="title-b">Song B</div>
+                <div class="artist-name" id="artist-b">Artist B</div>
+                <button class="play-btn" id="btn-b" onclick="toggleAudio(event, 'audio-b')">▶</button>
+                <audio id="audio-b"></audio>
+            </div>
+        </div>
+        
+        <div id="progress-container">
+            <div class="progress-track">
+                <div class="progress-fill" id="progress-bar"></div>
+            </div>
+            <div class="progress-labels">
+                <span>Start</span>
+                <span id="pct-text">0%</span>
+                <span>Finish</span>
+            </div>
+            
+            <button id="undo-btn" onclick="handleUndo()" disabled>↩ Back (Undo)</button>
+
+            <div class="controls-help">
+                <span><span class="key-badge">←</span> Left</span>
+                <span><span class="key-badge">→</span> Right</span>
+                <span><span class="key-badge">↑</span> Undo</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-view">
+        <h2 style="text-align: center;">🏆 Your Final Ranking</h2>
+        
+        <div id="results-capture-area">
+            <div id="results-list"></div>
+        </div>
+
+        <div class="actions-container">
+            <button onclick="downloadImage()">🖼️ Download Image</button>
+            <button onclick="downloadCSV()" class="btn-secondary">📄 Download CSV</button>
+            <button onclick="copyToClipboard()" class="btn-secondary full-width">📋 Copy Text</button>
+            <button onclick="location.reload()" class="btn-secondary full-width">🔄 Restart</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Global State ---
+        let songs = [];
+        let decisionMap = new Map();
+        let historyStack = [];
+        let currentPair = null; 
+        let estimatedTotalComparisons = 1;
+        let currentAudio = null;
+        let currentBtn = null;
+
+        const GENERIC_COVER = "https://cdn-icons-png.flaticon.com/512/26/26805.png"; 
+
+        // --- FETCH LOGIC: 3 STEPS ---
+        async function fetchSongData(line) {
+            let cleanQuery = line.replace(/official video|lyrics|audio|official|ft\.|feat\.|prod\./gi, '').replace('-', ' ').trim();
+            const tokens = cleanQuery.toLowerCase().split(' ').filter(t => t.length > 2);
+
+            // Parse Artist/Title for fallback
+            const parts = line.split('-');
+            let userArtist = parts[0] ? parts[0].trim() : "Unknown";
+            let userTitle = parts[1] ? parts.slice(1).join('-').trim() : line;
+
+            // STEP 1: Strict Song Search
+            const songUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&media=music&limit=5&entity=song&country=IT&explicit=Yes`;
+            try {
+                const res = await fetch(songUrl);
+                const data = await res.json();
+                if (data.resultCount > 0) {
+                    // Check for strict match
+                    const match = data.results.find(t => {
+                        const target = (t.artistName + " " + t.trackName).toLowerCase();
+                        return tokens.every(token => target.includes(token));
+                    });
+                    
+                    if (match) {
+                        return {
+                            id: match.trackId.toString(),
+                            title: match.trackName,
+                            artist: match.artistName,
+                            cover: match.artworkUrl100.replace('100x100bb', '600x600bb'),
+                            preview: match.previewUrl, // Might be null, that's fine
+                            found: true,
+                            custom: false
+                        };
+                    }
+                }
+            } catch (e) {}
+
+            // STEP 2: Artist Image Fallback
+            // If song not found, search for the ARTIST to get an image
+            const artistUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(userArtist)}&media=music&limit=1&entity=song&attribute=artistTerm&country=IT`;
+            try {
+                const res = await fetch(artistUrl);
+                const data = await res.json();
+                
+                if (data.resultCount > 0) {
+                    const artistTrack = data.results[0]; // Just to get artwork
+                    return {
+                        id: "manual_" + Math.random().toString(36).substr(2, 9),
+                        title: userTitle,  // Keep user title
+                        artist: artistTrack.artistName, // Use canonical artist name
+                        cover: artistTrack.artworkUrl100.replace('100x100bb', '600x600bb'), // Artist's art
+                        preview: null, // Force missing audio
+                        found: false,
+                        custom: false
+                    };
+                }
+            } catch (e) {}
+
+            // STEP 3: Generic Fallback
+            return {
+                id: "manual_" + Math.random().toString(36).substr(2, 9),
+                title: userTitle,
+                artist: userArtist,
+                cover: GENERIC_COVER,
+                preview: null,
+                found: false,
+                custom: false
+            };
+        }
+
+        // --- PHASE 1: SEARCH ---
+        async function initSearch() {
+            const input = document.getElementById('input-list').value;
+            const lines = input.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length < 2) {
+                alert("Please enter at least 2 songs.");
+                return;
+            }
+
+            document.getElementById('find-btn').disabled = true;
+            document.getElementById('loading-spinner').style.display = 'block';
+            document.getElementById('status-msg').innerText = "Searching songs...";
+
+            const promises = lines.map(line => fetchSongData(line));
+            songs = await Promise.all(promises);
+
+            document.getElementById('loading-spinner').style.display = 'none';
+            renderPrepList();
+            document.getElementById('setup-view').style.display = 'none';
+            document.getElementById('prep-view').style.display = 'flex';
+        }
+
+        // --- PHASE 2: PREP & UPLOAD ---
+        function renderPrepList() {
+            const container = document.getElementById('prep-list-container');
+            container.innerHTML = "";
+
+            songs.forEach(song => {
+                const div = document.createElement('div');
+                div.className = 'prep-item';
+
+                let statusBadge = "";
+                if (song.preview) {
+                    statusBadge = `<span class="status-badge ok" id="badge-${song.id}">Audio OK</span>`;
+                } else {
+                    statusBadge = `<span class="status-badge missing" id="badge-${song.id}">Missing Audio</span>`;
+                }
+
+                div.innerHTML = `
+                    <img src="${song.cover}" crossorigin="anonymous">
+                    <div class="prep-info">
+                        <div class="prep-title">${song.title}</div>
+                        <div class="prep-artist">${song.artist}</div>
+                    </div>
+                    <div class="prep-status">
+                        ${statusBadge}
+                        <div class="upload-btn-wrapper">
+                            <button class="btn-upload">📂 Upload</button>
+                            <input type="file" accept="audio/*" onchange="handleFileUpload(event, '${song.id}')">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function handleFileUpload(event, songId) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const song = songs.find(s => s.id === songId);
+            if (song) {
+                const blobUrl = URL.createObjectURL(file);
+                song.preview = blobUrl;
+                song.custom = true; 
+
+                const badge = document.getElementById(`badge-${songId}`);
+                badge.className = "status-badge ok";
+                badge.innerText = "Custom Loaded";
+                badge.style.color = "var(--accent)";
+                badge.style.background = "rgba(255, 174, 0, 0.15)";
+            }
+        }
+
+        // --- PHASE 3: START BATTLE ---
+        function startBattle() {
+            const n = songs.length;
+            estimatedTotalComparisons = n * Math.ceil(Math.log2(n)); 
+
+            document.getElementById('prep-view').style.display = 'none';
+            document.getElementById('comparison-view').style.display = 'flex';
+            
+            document.addEventListener('keydown', handleKeyInput);
+            runEngine();
+        }
+
+        // --- ENGINE & LOGIC ---
+        async function runEngine() {
+            try {
+                const listToSort = [...songs];
+                const sorted = mergeSort(listToSort);
+                showResults(sorted);
+            } catch (interrupt) {
+                if (interrupt.type === 'NEED_DECISION') {
+                    presentBattle(interrupt.a, interrupt.b);
+                } else {
+                    console.error(interrupt);
+                }
+            }
+        }
+
+        function mergeSort(array) {
+            if (array.length <= 1) return array;
+            const middle = Math.floor(array.length / 2);
+            const left = mergeSort(array.slice(0, middle));
+            const right = mergeSort(array.slice(middle));
+            return merge(left, right);
+        }
+
+        function merge(left, right) {
+            let resultArray = [];
+            let i = 0;
+            let j = 0;
+
+            while (i < left.length && j < right.length) {
+                const a = left[i];
+                const b = right[j];
+                const key = a.id < b.id ? `${a.id}-${b.id}` : `${b.id}-${a.id}`;
+
+                if (decisionMap.has(key)) {
+                    if (decisionMap.get(key) === a.id) {
+                        resultArray.push(a); i++;
+                    } else {
+                        resultArray.push(b); j++;
+                    }
+                } else {
+                    throw { type: 'NEED_DECISION', a: a, b: b };
+                }
+            }
+            return resultArray.concat(left.slice(i)).concat(right.slice(j));
+        }
+
+        function presentBattle(songA, songB) {
+            currentPair = { a: songA, b: songB };
+            const arena = document.getElementById('arena');
+            
+            arena.classList.remove('slide-left-out');
+            arena.classList.add('slide-enter-from-right');
+
+            updateCard('a', songA);
+            updateCard('b', songB);
+            stopAudio();
+            updateProgressBar();
+            
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    arena.classList.remove('slide-enter-from-right');
+                });
+            });
+            document.getElementById('undo-btn').disabled = (historyStack.length === 0);
+        }
+
+        function handleChoice(choice) {
+            if (!currentPair) return;
+            const winner = choice === 'a' ? currentPair.a : currentPair.b;
+            const a = currentPair.a;
+            const b = currentPair.b;
+            const key = a.id < b.id ? `${a.id}-${b.id}` : `${b.id}-${a.id}`;
+
+            decisionMap.set(key, winner.id);
+            historyStack.push(key);
+            document.getElementById('arena').classList.add('slide-left-out');
+            setTimeout(() => runEngine(), 300);
+        }
+
+        function handleUndo() {
+            if (historyStack.length === 0) return;
+            const lastKey = historyStack.pop();
+            decisionMap.delete(lastKey);
+            runEngine();
+        }
+
+        function updateProgressBar() {
+            const made = historyStack.length;
+            let pct = Math.round((made / estimatedTotalComparisons) * 100);
+            if (pct > 95) pct = 95; 
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+            document.getElementById('pct-text').innerText = `${pct}%`;
+        }
+
+        function updateCard(side, song) {
+            document.getElementById(`img-${side}`).src = song.cover;
+            document.getElementById(`title-${side}`).innerText = song.title;
+            document.getElementById(`artist-${side}`).innerText = song.artist;
+            
+            const audioEl = document.getElementById(`audio-${side}`);
+            const btnEl = document.getElementById(`btn-${side}`);
+
+            // Handle Audio Preview
+            if (song.preview) {
+                audioEl.src = song.preview;
+                btnEl.style.display = "inline-flex";
+                btnEl.classList.remove("disabled");
+            } else {
+                audioEl.removeAttribute('src');
+                btnEl.innerHTML = "🚫"; 
+                btnEl.classList.add("disabled");
+            }
+        }
+
+        function stopAudio() {
+            if(currentAudio) {
+                currentAudio.pause();
+                if(currentBtn) currentBtn.innerHTML = "▶";
+                currentAudio = null;
+            }
+        }
+
+        function toggleAudio(event, audioId) {
+            if(event) event.stopPropagation();
+            const audioEl = document.getElementById(audioId);
+            const btn = audioId === 'audio-a' ? document.getElementById('btn-a') : document.getElementById('btn-b');
+            if(!audioEl.src) return;
+
+            if (currentAudio && currentAudio !== audioEl) {
+                currentAudio.pause();
+                if(currentBtn) currentBtn.innerHTML = "▶";
+            }
+            if (audioEl.paused) {
+                audioEl.volume = 0.5;
+                audioEl.play().catch(e => console.log(e));
+                btn.innerHTML = "⏸";
+                currentAudio = audioEl;
+                currentBtn = btn;
+            } else {
+                audioEl.pause();
+                btn.innerHTML = "▶";
+                currentAudio = null;
+            }
+        }
+
+        function handleKeyInput(e) {
+            if (document.getElementById('comparison-view').style.display === 'none') return;
+            switch(e.key) {
+                case "ArrowLeft": e.preventDefault(); handleChoice('a'); break;
+                case "ArrowRight": e.preventDefault(); handleChoice('b'); break;
+                case "ArrowUp": e.preventDefault(); handleUndo(); break;
+            }
+        }
+
+        // --- Results ---
+        function showResults(rankedList) {
+            document.removeEventListener('keydown', handleKeyInput);
+            document.getElementById('comparison-view').style.display = 'none';
+            document.getElementById('results-view').style.display = 'block';
+            
+            const container = document.getElementById('results-list');
+            container.innerHTML = "";
+            
+            rankedList.forEach((song, index) => {
+                const div = document.createElement('div');
+                div.className = 'ranking-item';
+                
+                let badge = "";
+                if (song.custom) badge = `<span class="no-preview-badge uploaded-badge">Custom Audio</span>`;
+                else if (!song.preview) badge = `<span class="no-preview-badge">Missing Audio</span>`;
+
+                div.innerHTML = `
+                    <div class="rank-num">#${index + 1}</div>
+                    <img src="${song.cover}" class="rank-img" crossorigin="anonymous">
+                    <div class="rank-details">
+                        <div class="song-title">${song.title} ${badge}</div>
+                        <div class="artist-name">${song.artist}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function downloadCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Rank,Artist,Song,Note\n";
+            const items = document.querySelectorAll('.ranking-item');
+            items.forEach((item) => {
+                const rank = item.querySelector('.rank-num').innerText.replace('#','');
+                const title = item.querySelector('.song-title').childNodes[0].nodeValue.trim();
+                const artist = item.querySelector('.artist-name').innerText;
+                
+                let note = "iTunes";
+                if(item.querySelector('.uploaded-badge')) note = "Custom Audio";
+                else if(item.querySelector('.no-preview-badge')) note = "Missing Audio";
+                
+                csvContent += `${rank},"${artist}","${title}","${note}"\n`;
+            });
+            const link = document.createElement("a");
+            link.href = encodeURI(csvContent);
+            link.download = "music_ranking.csv";
+            link.click();
+        }
+
+        function copyToClipboard() {
+            let text = "🎵 My Music Ranking:\n\n";
+            document.querySelectorAll('.ranking-item').forEach((item) => {
+                const rank = item.querySelector('.rank-num').innerText;
+                const title = item.querySelector('.song-title').childNodes[0].nodeValue.trim();
+                const artist = item.querySelector('.artist-name').innerText;
+                text += `${rank} ${artist} - ${title}\n`;
+            });
+            navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
+        }
+
+        function downloadImage() {
+            const element = document.getElementById("results-capture-area");
+            html2canvas(element, { useCORS: true, backgroundColor: "#121212", scale: 2 }).then(canvas => {
+                const link = document.createElement("a");
+                link.download = "music_ranking.jpg";
+                link.href = canvas.toDataURL("image/jpeg", 0.9);
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
