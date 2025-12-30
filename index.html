@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Ranker Ultimate (Artist Fallback)</title>
+    <title>Music Ranker</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
+        /* --- 1. THEME: SPOTIFY DARK MODE --- */
         :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --accent: #ffae00; /* Gold/Yellow */
+            --bg-color: #121212;         
+            --card-bg: #181818;          
+            --accent: #1db954;           
+            --accent-hover: #1ed760;     
             --text: #ffffff;
             --secondary-text: #b3b3b3;
-            --progress-bg: #333333;
+            --progress-bg: #4d4d4d;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text);
             margin: 0;
@@ -28,124 +30,94 @@
             overflow-x: hidden;
         }
 
-        h1 { margin-bottom: 20px; text-align: center; font-weight: 800; letter-spacing: -1px;}
+        h1 { margin-bottom: 20px; text-align: center; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+        h1 span { color: var(--accent); }
 
-        /* Setup View */
+        /* INPUT AREA */
         #setup-view { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 15px; }
         
         textarea {
             width: 100%;
-            height: 150px;
-            background: var(--card-bg);
-            border: 1px solid #333;
+            height: 200px;
+            background: #242424; 
+            border: 1px solid transparent;
             color: var(--text);
             padding: 15px;
-            border-radius: 12px;
+            border-radius: 8px;
             resize: vertical;
-            font-size: 16px;
+            font-size: 14px;
             outline: none;
             box-sizing: border-box;
             font-family: monospace;
+            line-height: 1.4;
         }
         
         textarea:focus { border-color: var(--accent); }
 
         button {
             background-color: var(--accent);
-            color: black;
+            color: #000000;
             border: none;
-            padding: 15px 30px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
+            padding: 14px 32px;
+            border-radius: 500px; 
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: all 0.2s;
         }
 
-        button:hover { transform: scale(1.02); opacity: 0.9; }
-        button:disabled { background-color: #555; color: #aaa; cursor: not-allowed; transform: none; }
+        button:hover { background-color: var(--accent-hover); transform: scale(1.02); }
+        button:disabled { background-color: #555; color: #888; cursor: not-allowed; transform: none; }
 
         /* PREP VIEW */
         #prep-view { display: none; width: 100%; max-width: 700px; flex-direction: column; gap: 20px; }
         
         .prep-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 60vh;
-            overflow-y: auto;
-            padding-right: 5px;
+            display: flex; flex-direction: column; gap: 8px;
+            max-height: 60vh; overflow-y: auto; padding-right: 5px;
         }
 
         .prep-item {
-            display: flex;
-            align-items: center;
+            display: flex; align-items: center;
             background: var(--card-bg);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            transition: background 0.2s;
         }
+        .prep-item:hover { background: #282828; }
 
-        .prep-item img { width: 50px; height: 50px; border-radius: 4px; margin-right: 15px; object-fit: cover; }
-        
-        .prep-info { flex-grow: 1; }
-        .prep-title { font-weight: bold; font-size: 0.95em; }
+        .prep-item img { width: 40px; height: 40px; border-radius: 2px; margin-right: 15px; object-fit: cover; }
+        .prep-info { flex-grow: 1; overflow: hidden; }
+        .prep-title { font-weight: bold; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .prep-artist { font-size: 0.8em; color: var(--secondary-text); }
         
         .prep-status { display: flex; align-items: center; gap: 10px; }
         
         .status-badge {
-            font-size: 0.75em;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #333;
-            font-weight: bold;
-            text-transform: uppercase;
+            font-size: 0.7em; padding: 3px 6px; border-radius: 2px;
+            font-weight: bold; text-transform: uppercase;
         }
-        .status-badge.ok { background: rgba(29, 185, 84, 0.2); color: #1db954; }
-        .status-badge.missing { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
+        .status-badge.ok { color: var(--accent); border: 1px solid var(--accent); }
+        .status-badge.missing { color: #e91429; border: 1px solid #e91429; } 
 
-        .upload-btn-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-
+        .upload-wrapper { position: relative; overflow: hidden; display: inline-block; }
         .btn-upload {
-            border: 1px solid #555;
-            color: white;
-            background-color: #333;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.8em;
-            cursor: pointer;
+            background: transparent; border: 1px solid #555; color: white;
+            padding: 5px 10px; border-radius: 500px; font-size: 0.7em; text-transform: none;
         }
+        .btn-upload:hover { border-color: white; transform: none; }
+        .upload-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
 
-        .btn-upload:hover { background-color: #444; }
-
-        .upload-btn-wrapper input[type=file] {
-            font-size: 100px;
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-
-        /* Comparison View */
+        /* BATTLE ARENA */
         #comparison-view { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
         
         .battle-arena {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 30px;
-            width: 100%;
-            flex-wrap: wrap;
-            position: relative;
-            transform: translateX(0);
-            opacity: 1;
+            display: flex; justify-content: center; align-items: center;
+            gap: 40px; width: 100%; flex-wrap: wrap; position: relative;
+            transform: translateX(0); opacity: 1;
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
         }
 
@@ -153,205 +125,110 @@
         .slide-enter-from-right { transform: translateX(50px) scale(0.95); opacity: 0; transition: none; }
 
         .card {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 20px;
-            width: 280px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: transform 0.2s, border-color 0.2s;
-            cursor: pointer;
-            border: 2px solid transparent;
-            position: relative;
-            overflow: hidden;
+            background: var(--card-bg); border-radius: 8px; padding: 20px;
+            width: 300px; text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            transition: background 0.2s, transform 0.2s;
+            cursor: pointer; position: relative;
         }
-
-        .card:hover { border-color: var(--accent); transform: translateY(-5px); }
-        .card:active { transform: scale(0.98); }
+        .card:hover { background: #282828; transform: translateY(-4px); }
+        .card:active { background: #121212; transform: scale(0.98); }
 
         .card img { 
-            width: 100%; 
-            aspect-ratio: 1/1; 
-            object-fit: cover; 
-            border-radius: 8px; 
-            margin-bottom: 15px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 100%; aspect-ratio: 1/1; object-fit: cover; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 20px;
             pointer-events: none;
-            background-color: #000;
         }
         
-        .song-title { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; line-height: 1.2; }
+        .song-title { font-size: 1.1em; font-weight: 700; margin-bottom: 5px; line-height: 1.2; color: white; }
         .artist-name { color: var(--secondary-text); font-size: 0.9em; margin-bottom: 15px; }
 
         .play-btn {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: var(--accent);
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            font-size: 24px;
-            margin-top: 5px;
-            cursor: pointer;
-            transition: background 0.2s;
+            background: var(--accent); color: black;
+            width: 50px; height: 50px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0; font-size: 20px; margin-top: 5px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s, background 0.1s;
         }
-        
-        .play-btn:hover { background: var(--accent); color: black; border-color: var(--accent); }
-        .play-btn.disabled { opacity: 0.3; cursor: default; border-color: #444; color: #444; pointer-events: none; }
+        .play-btn:hover { background: var(--accent-hover); transform: scale(1.1); }
+        .play-btn.disabled { background: #333; color: #555; opacity: 1; cursor: default; transform: none; box-shadow: none;}
 
-        .vs-text { font-size: 1.5em; font-weight: 900; color: #333; font-style: italic; }
+        .vs-text { font-size: 1.2em; font-weight: 900; color: #555; font-style: italic; }
 
-        /* Progress Bar */
-        #progress-container { 
-            width: 100%; 
-            max-width: 500px; 
-            margin-top: 40px; 
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .progress-track {
-            width: 100%;
-            height: 8px;
-            background-color: var(--progress-bg);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: var(--accent);
-            width: 0%;
-            transition: width 0.3s ease;
-            border-radius: 4px;
-        }
-
-        .progress-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8em;
-            color: var(--secondary-text);
-        }
-
-        /* Controls */
-        .controls-help {
-            margin-top: 15px;
-            font-size: 0.85em;
-            color: #666;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .key-badge {
-            background: #333;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-            border: 1px solid #444;
-        }
+        /* PROGRESS & CONTROLS */
+        #progress-container { width: 100%; max-width: 400px; margin-top: 50px; display: flex; flex-direction: column; gap: 8px; }
+        .progress-track { width: 100%; height: 4px; background: var(--progress-bg); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease; }
+        .progress-labels { display: flex; justify-content: space-between; font-size: 0.75em; color: var(--secondary-text); font-weight: bold;}
 
         #undo-btn {
-            background-color: transparent;
-            border: 1px solid #444;
-            color: var(--secondary-text);
-            padding: 8px 20px;
-            font-size: 0.9em;
-            margin-top: 10px;
-            cursor: pointer;
+            background: transparent; color: var(--secondary-text); 
+            padding: 10px; font-size: 0.8em; margin-top: 10px; 
+            text-transform: none; letter-spacing: 0;
+            border: 1px solid transparent;
         }
-        #undo-btn:hover { border-color: var(--text); color: var(--text); background: rgba(255,255,255,0.05); transform: none; }
-        #undo-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #333; }
+        #undo-btn:hover { color: white; text-decoration: underline; background: transparent; transform: none; }
+        #undo-btn:disabled { color: #333; text-decoration: none; cursor: default; }
 
-        /* Results View */
+        /* RESULTS */
         #results-view { display: none; width: 100%; max-width: 600px; padding-bottom: 50px; }
+        #results-capture-area { background-color: var(--bg-color); padding: 30px; border-radius: 0; }
         
-        #results-capture-area {
-            background-color: var(--bg-color); 
-            padding: 20px;
-            border-radius: 12px;
-        }
-
-        .ranking-item {
-            display: flex;
-            align-items: center;
-            background: var(--card-bg);
-            margin-bottom: 12px;
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid #333;
-        }
-
-        .rank-num { font-size: 1.2em; font-weight: 900; width: 40px; color: var(--accent); text-align: center;}
-        .rank-img { width: 60px; height: 60px; border-radius: 6px; margin-right: 15px; object-fit: cover; }
+        .ranking-item { display: flex; align-items: center; margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #282828; }
+        .rank-num { font-size: 1.5em; font-weight: 700; width: 40px; color: var(--accent); text-align: center; margin-right: 10px;}
+        .rank-img { width: 50px; height: 50px; margin-right: 15px; object-fit: cover; }
         .rank-details { flex-grow: 1; }
-        
-        .no-preview-badge {
-            font-size: 0.7em;
-            color: #ff4444;
-            border: 1px solid #ff4444;
-            padding: 2px 5px;
-            border-radius: 4px;
-            margin-left: 10px;
-            display: inline-block;
-            vertical-align: middle;
-            background: rgba(255, 68, 68, 0.1);
-        }
-        .uploaded-badge { color: var(--accent); border-color: var(--accent); background: rgba(255, 174, 0, 0.1); }
 
-        .actions-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
+        .actions-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
         .full-width { grid-column: span 2; }
-        .btn-secondary { background-color: #333; color: white; }
-        .btn-secondary:hover { background-color: #444; }
+        .btn-secondary { background-color: transparent; border: 1px solid #555; color: white; }
+        .btn-secondary:hover { border-color: white; background: transparent; }
 
-        /* Loader */
-        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+        /* UTILS */
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin: 20px auto; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-log { color: #e91429; font-size: 0.9em; margin-top: 10px; white-space: pre-wrap; text-align: center;}
         
-        .error-log { color: #f0ad4e; font-size: 0.9em; margin-top: 10px; white-space: pre-wrap; text-align: center;}
-
+        .controls-help { margin-top: 20px; font-size: 0.8em; color: #555; display: flex; gap: 15px; justify-content: center; }
+        .key-badge { background: #333; padding: 2px 6px; border-radius: 3px; font-family: monospace; color: #ddd; }
+        
+        .prep-list::-webkit-scrollbar { width: 8px; }
+        .prep-list::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <h1>🎧 Music Ranker <span style="font-size:0.4em; vertical-align:middle; color:#666">Pro</span></h1>
+    <h1>Music Ranker <span>Pro</span></h1>
 
     <div id="setup-view">
-        <p>Enter songs (Artist - Title):</p>
-        <textarea id="input-list" placeholder="Angelina Mango - Caramè&#10;Queen - Bohemian Rhapsody&#10;My Demo Track - Untitled"></textarea>
-        <button id="find-btn" onclick="initSearch()">Find Songs</button>
+        <p style="text-align:center; color: #b3b3b3; font-size: 0.9em; margin-top:-10px;">Paste your list (Artist - Song)</p>
+        <textarea id="input-list" placeholder="Oasis - Wonderwall&#10;Daft Punk - One More Time"></textarea>
+        
+        <button id="find-btn" onclick="initSearch()">Start Ranking</button>
+        
         <div id="loading-spinner" class="loader"></div>
-        <p id="status-msg" style="text-align: center; color: var(--secondary-text);"></p>
+        <p id="status-msg" style="text-align: center; color: var(--secondary-text); font-size: 0.9em;"></p>
+        <div id="error-console" class="error-log"></div>
     </div>
 
     <div id="prep-view">
-        <h3 style="text-align:center; margin:0;">Review & Upload Audio</h3>
-        <p style="text-align:center; font-size:0.9em; color:#888;">Audio missing? Upload your own file or rank without it.</p>
+        <h2 style="margin-bottom: 5px;">Review Tracks</h2>
+        <p style="text-align:center; font-size:0.9em; color:#b3b3b3; margin-bottom: 20px;">Upload audio for missing tracks. All previews limited to 15s.</p>
         
         <div class="prep-list" id="prep-list-container"></div>
 
-        <button onclick="startBattle()">⚔️ Start Battle</button>
+        <button onclick="startBattle()" style="margin-top: 20px; width: 100%;">Let's Go</button>
     </div>
 
     <div id="comparison-view">
-        <h2 id="battle-title" style="margin-bottom: 30px;">Which one do you prefer?</h2>
+        <h2 id="battle-title" style="margin-bottom: 40px; font-size: 1.5em;">Choose your favorite</h2>
         
         <div class="battle-arena" id="arena">
             <div class="card" id="card-a" onclick="handleChoice('a')">
-                <img src="" id="img-a" alt="Cover A" crossorigin="anonymous">
-                <div class="song-title" id="title-a">Song A</div>
-                <div class="artist-name" id="artist-a">Artist A</div>
+                <img src="" id="img-a" crossorigin="anonymous">
+                <div class="song-title" id="title-a"></div>
+                <div class="artist-name" id="artist-a"></div>
                 <button class="play-btn" id="btn-a" onclick="toggleAudio(event, 'audio-a')">▶</button>
                 <audio id="audio-a"></audio>
             </div>
@@ -359,9 +236,9 @@
             <div class="vs-text">VS</div>
 
             <div class="card" id="card-b" onclick="handleChoice('b')">
-                <img src="" id="img-b" alt="Cover B" crossorigin="anonymous">
-                <div class="song-title" id="title-b">Song B</div>
-                <div class="artist-name" id="artist-b">Artist B</div>
+                <img src="" id="img-b" crossorigin="anonymous">
+                <div class="song-title" id="title-b"></div>
+                <div class="artist-name" id="artist-b"></div>
                 <button class="play-btn" id="btn-b" onclick="toggleAudio(event, 'audio-b')">▶</button>
                 <audio id="audio-b"></audio>
             </div>
@@ -377,7 +254,7 @@
                 <span>Finish</span>
             </div>
             
-            <button id="undo-btn" onclick="handleUndo()" disabled>↩ Back (Undo)</button>
+            <button id="undo-btn" onclick="handleUndo()" disabled>Undo last choice</button>
 
             <div class="controls-help">
                 <span><span class="key-badge">←</span> Left</span>
@@ -388,22 +265,26 @@
     </div>
 
     <div id="results-view">
-        <h2 style="text-align: center;">🏆 Your Final Ranking</h2>
+        <h2 style="text-align: center; margin-bottom: 30px;">Final Ranking</h2>
         
         <div id="results-capture-area">
             <div id="results-list"></div>
         </div>
 
         <div class="actions-container">
-            <button onclick="downloadImage()">🖼️ Download Image</button>
-            <button onclick="downloadCSV()" class="btn-secondary">📄 Download CSV</button>
-            <button onclick="copyToClipboard()" class="btn-secondary full-width">📋 Copy Text</button>
-            <button onclick="location.reload()" class="btn-secondary full-width">🔄 Restart</button>
+            <button onclick="downloadImage()">Save Image</button>
+            <button onclick="downloadCSV()" class="btn-secondary">Export CSV</button>
+            <button onclick="copyToClipboard()" class="btn-secondary full-width">Copy List</button>
+            <button onclick="location.reload()" class="btn-secondary full-width">Start Over</button>
         </div>
     </div>
 
     <script>
-        // --- Global State ---
+        // --- CONFIGURATION ---
+        const GENERIC_COVER = "https://cdn-icons-png.flaticon.com/512/26/26805.png";
+        const PREVIEW_DURATION = 15; // Seconds
+
+        // --- GLOBAL STATE ---
         let songs = [];
         let decisionMap = new Map();
         let historyStack = [];
@@ -411,79 +292,94 @@
         let estimatedTotalComparisons = 1;
         let currentAudio = null;
         let currentBtn = null;
+        let audioStopTimer = null; 
 
-        const GENERIC_COVER = "https://cdn-icons-png.flaticon.com/512/26/26805.png"; 
-
-        // --- FETCH LOGIC: 3 STEPS ---
+        // --- 1. STRICT DATA FETCHER ---
         async function fetchSongData(line) {
-            let cleanQuery = line.replace(/official video|lyrics|audio|official|ft\.|feat\.|prod\./gi, '').replace('-', ' ').trim();
-            const tokens = cleanQuery.toLowerCase().split(' ').filter(t => t.length > 2);
+            // Clean input string
+            let cleanQuery = line
+                .replace(/official video|lyrics|audio|official|ft\.|feat\.|prod\./gi, '')
+                .replace('-', ' ')
+                .trim();
+            
+            // Extract tokens (words > 2 chars) for validation
+            const tokens = cleanQuery.toLowerCase().split(/[\s-]+/).filter(t => t.length > 2);
 
-            // Parse Artist/Title for fallback
+            // Parse Manual Fallback
             const parts = line.split('-');
             let userArtist = parts[0] ? parts[0].trim() : "Unknown";
             let userTitle = parts[1] ? parts.slice(1).join('-').trim() : line;
+            
+            // Tokens for Artist-only check
+            const userArtistTokens = userArtist.toLowerCase().split(/[\s-]+/).filter(t => t.length > 2);
 
-            // STEP 1: Strict Song Search
-            const songUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&media=music&limit=5&entity=song&country=IT&explicit=Yes`;
-            try {
-                const res = await fetch(songUrl);
-                const data = await res.json();
-                if (data.resultCount > 0) {
-                    // Check for strict match
-                    const match = data.results.find(t => {
-                        const target = (t.artistName + " " + t.trackName).toLowerCase();
-                        return tokens.every(token => target.includes(token));
-                    });
-                    
-                    if (match) {
-                        return {
-                            id: match.trackId.toString(),
-                            title: match.trackName,
-                            artist: match.artistName,
-                            cover: match.artworkUrl100.replace('100x100bb', '600x600bb'),
-                            preview: match.previewUrl, // Might be null, that's fine
-                            found: true,
-                            custom: false
-                        };
-                    }
-                }
-            } catch (e) {}
-
-            // STEP 2: Artist Image Fallback
-            // If song not found, search for the ARTIST to get an image
-            const artistUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(userArtist)}&media=music&limit=1&entity=song&attribute=artistTerm&country=IT`;
-            try {
-                const res = await fetch(artistUrl);
-                const data = await res.json();
-                
-                if (data.resultCount > 0) {
-                    const artistTrack = data.results[0]; // Just to get artwork
-                    return {
-                        id: "manual_" + Math.random().toString(36).substr(2, 9),
-                        title: userTitle,  // Keep user title
-                        artist: artistTrack.artistName, // Use canonical artist name
-                        cover: artistTrack.artworkUrl100.replace('100x100bb', '600x600bb'), // Artist's art
-                        preview: null, // Force missing audio
-                        found: false,
-                        custom: false
-                    };
-                }
-            } catch (e) {}
-
-            // STEP 3: Generic Fallback
-            return {
+            const manualObj = {
                 id: "manual_" + Math.random().toString(36).substr(2, 9),
                 title: userTitle,
                 artist: userArtist,
                 cover: GENERIC_COVER,
                 preview: null,
                 found: false,
-                custom: false
+                custom: false,
+                randomStart: 0 
             };
+
+            try {
+                // Fetch iTunes Data
+                const url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&media=music&limit=10&entity=song&country=IT&explicit=Yes`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.resultCount > 0) {
+                    // FILTER 1: Strict Token Matching (Input keywords MUST be in result)
+                    let candidates = data.results.filter(t => {
+                        const target = (t.artistName + " " + t.trackName).toLowerCase();
+                        return tokens.every(token => target.includes(token));
+                    });
+
+                    // FILTER 2: Anti-Cover/Karaoke
+                    const isKaraokeSearch = cleanQuery.toLowerCase().includes("karaoke");
+                    if (!isKaraokeSearch) {
+                        candidates = candidates.filter(t => {
+                            const badWords = ["karaoke", "tribute", "instrumental", "cover version", "backing track", "cover"];
+                            const info = (t.trackName + " " + t.collectionName + " " + t.artistName).toLowerCase();
+                            return !badWords.some(bw => info.includes(bw));
+                        });
+                    }
+
+                    // FILTER 3: ARTIST MISMATCH VETO
+                    // If we have a user artist, check if result artist contains at least one significant token
+                    if (userArtistTokens.length > 0) {
+                        candidates = candidates.filter(t => {
+                            const resArtist = t.artistName.toLowerCase();
+                            return userArtistTokens.some(token => resArtist.includes(token));
+                        });
+                    }
+
+                    if (candidates.length === 0) return manualObj; 
+
+                    // FILTER 4: Prefer tracks with Preview
+                    let match = candidates.find(t => t.previewUrl);
+                    
+                    if (!match) match = candidates[0]; // If no audio, take the best match
+
+                    return {
+                        id: match.trackId.toString(),
+                        title: match.trackName,
+                        artist: match.artistName,
+                        cover: match.artworkUrl100.replace('100x100bb', '600x600bb'),
+                        preview: match.previewUrl, // might be null
+                        found: true,
+                        custom: false,
+                        randomStart: 0
+                    };
+                }
+            } catch (e) { }
+
+            return manualObj;
         }
 
-        // --- PHASE 1: SEARCH ---
+        // --- 2. SEARCH & PREP ---
         async function initSearch() {
             const input = document.getElementById('input-list').value;
             const lines = input.split('\n').filter(line => line.trim() !== '');
@@ -496,6 +392,7 @@
             document.getElementById('find-btn').disabled = true;
             document.getElementById('loading-spinner').style.display = 'block';
             document.getElementById('status-msg').innerText = "Searching songs...";
+            document.getElementById('error-console').innerText = "";
 
             const promises = lines.map(line => fetchSongData(line));
             songs = await Promise.all(promises);
@@ -506,7 +403,6 @@
             document.getElementById('prep-view').style.display = 'flex';
         }
 
-        // --- PHASE 2: PREP & UPLOAD ---
         function renderPrepList() {
             const container = document.getElementById('prep-list-container');
             container.innerHTML = "";
@@ -517,9 +413,9 @@
 
                 let statusBadge = "";
                 if (song.preview) {
-                    statusBadge = `<span class="status-badge ok" id="badge-${song.id}">Audio OK</span>`;
+                    statusBadge = `<span class="status-badge ok" id="badge-${song.id}">Audio Ready</span>`;
                 } else {
-                    statusBadge = `<span class="status-badge missing" id="badge-${song.id}">Missing Audio</span>`;
+                    statusBadge = `<span class="status-badge missing" id="badge-${song.id}">No Audio</span>`;
                 }
 
                 div.innerHTML = `
@@ -530,8 +426,8 @@
                     </div>
                     <div class="prep-status">
                         ${statusBadge}
-                        <div class="upload-btn-wrapper">
-                            <button class="btn-upload">📂 Upload</button>
+                        <div class="upload-wrapper">
+                            <button class="btn-upload">Upload File</button>
                             <input type="file" accept="audio/*" onchange="handleFileUpload(event, '${song.id}')">
                         </div>
                     </div>
@@ -547,18 +443,30 @@
             const song = songs.find(s => s.id === songId);
             if (song) {
                 const blobUrl = URL.createObjectURL(file);
+                
+                const tempAudio = new Audio(blobUrl);
+                tempAudio.addEventListener('loadedmetadata', () => {
+                    const duration = tempAudio.duration;
+                    if (duration > PREVIEW_DURATION + 5) {
+                        const maxStart = duration - PREVIEW_DURATION - 5;
+                        song.randomStart = Math.random() * maxStart; 
+                    } else {
+                        song.randomStart = 0;
+                    }
+                });
+
                 song.preview = blobUrl;
                 song.custom = true; 
 
                 const badge = document.getElementById(`badge-${songId}`);
                 badge.className = "status-badge ok";
                 badge.innerText = "Custom Loaded";
-                badge.style.color = "var(--accent)";
-                badge.style.background = "rgba(255, 174, 0, 0.15)";
+                badge.style.color = "#1db954"; 
+                badge.style.borderColor = "#1db954";
             }
         }
 
-        // --- PHASE 3: START BATTLE ---
+        // --- 3. BATTLE ENGINE ---
         function startBattle() {
             const n = songs.length;
             estimatedTotalComparisons = n * Math.ceil(Math.log2(n)); 
@@ -570,7 +478,6 @@
             runEngine();
         }
 
-        // --- ENGINE & LOGIC ---
         async function runEngine() {
             try {
                 const listToSort = [...songs];
@@ -616,6 +523,7 @@
             return resultArray.concat(left.slice(i)).concat(right.slice(j));
         }
 
+        // --- 4. UI INTERACTION ---
         function presentBattle(songA, songB) {
             currentPair = { a: songA, b: songB };
             const arena = document.getElementById('arena');
@@ -625,7 +533,8 @@
 
             updateCard('a', songA);
             updateCard('b', songB);
-            stopAudio();
+            
+            stopAudio(); 
             updateProgressBar();
             
             requestAnimationFrame(() => {
@@ -645,6 +554,7 @@
 
             decisionMap.set(key, winner.id);
             historyStack.push(key);
+
             document.getElementById('arena').classList.add('slide-left-out');
             setTimeout(() => runEngine(), 300);
         }
@@ -672,46 +582,84 @@
             const audioEl = document.getElementById(`audio-${side}`);
             const btnEl = document.getElementById(`btn-${side}`);
 
-            // Handle Audio Preview
+            // Reset
+            audioEl.removeAttribute('src');
+            
             if (song.preview) {
                 audioEl.src = song.preview;
-                btnEl.style.display = "inline-flex";
                 btnEl.classList.remove("disabled");
+                btnEl.innerHTML = "▶";
             } else {
-                audioEl.removeAttribute('src');
-                btnEl.innerHTML = "🚫"; 
                 btnEl.classList.add("disabled");
+                btnEl.innerHTML = "🚫";
             }
         }
 
+        // --- 5. AUDIO LOGIC (15s limit & Random Start) ---
         function stopAudio() {
             if(currentAudio) {
                 currentAudio.pause();
+                currentAudio.currentTime = 0; 
                 if(currentBtn) currentBtn.innerHTML = "▶";
                 currentAudio = null;
+                currentBtn = null;
+            }
+            if(audioStopTimer) {
+                clearTimeout(audioStopTimer);
+                audioStopTimer = null;
             }
         }
 
         function toggleAudio(event, audioId) {
-            if(event) event.stopPropagation();
+            event.stopPropagation();
             const audioEl = document.getElementById(audioId);
-            const btn = audioId === 'audio-a' ? document.getElementById('btn-a') : document.getElementById('btn-b');
-            if(!audioEl.src) return;
+            const btn = document.getElementById(audioId === 'audio-a' ? 'btn-a' : 'btn-b');
+            
+            if(!audioEl.src) return; 
 
+            // Switch tracks
             if (currentAudio && currentAudio !== audioEl) {
-                currentAudio.pause();
-                if(currentBtn) currentBtn.innerHTML = "▶";
+                stopAudio(); 
             }
+
             if (audioEl.paused) {
+                // START
+                const song = (audioId === 'audio-a') ? currentPair.a : currentPair.b;
+                
+                // Random Start for Custom Audio
+                if (song.custom && song.randomStart > 0) {
+                    if(audioEl.currentTime < 1) {
+                         audioEl.currentTime = song.randomStart;
+                    }
+                }
+
                 audioEl.volume = 0.5;
-                audioEl.play().catch(e => console.log(e));
-                btn.innerHTML = "⏸";
-                currentAudio = audioEl;
-                currentBtn = btn;
+                audioEl.play()
+                    .then(() => {
+                        btn.innerHTML = "⏸";
+                        currentAudio = audioEl;
+                        currentBtn = btn;
+
+                        // Auto-Stop after 15s
+                        if(audioStopTimer) clearTimeout(audioStopTimer);
+                        audioStopTimer = setTimeout(() => {
+                            audioEl.pause();
+                            btn.innerHTML = "▶";
+                        }, PREVIEW_DURATION * 1000); 
+                    })
+                    .catch(e => console.log("Play error", e));
+
+                // Natural end
+                audioEl.onended = () => {
+                    btn.innerHTML = "▶";
+                    if(audioStopTimer) clearTimeout(audioStopTimer);
+                };
+
             } else {
+                // PAUSE
                 audioEl.pause();
                 btn.innerHTML = "▶";
-                currentAudio = null;
+                if(audioStopTimer) clearTimeout(audioStopTimer);
             }
         }
 
@@ -724,7 +672,7 @@
             }
         }
 
-        // --- Results ---
+        // --- 6. RESULTS (NO BADGES) ---
         function showResults(rankedList) {
             document.removeEventListener('keydown', handleKeyInput);
             document.getElementById('comparison-view').style.display = 'none';
@@ -737,15 +685,12 @@
                 const div = document.createElement('div');
                 div.className = 'ranking-item';
                 
-                let badge = "";
-                if (song.custom) badge = `<span class="no-preview-badge uploaded-badge">Custom Audio</span>`;
-                else if (!song.preview) badge = `<span class="no-preview-badge">Missing Audio</span>`;
-
+                // NO BADGES HERE
                 div.innerHTML = `
                     <div class="rank-num">#${index + 1}</div>
                     <img src="${song.cover}" class="rank-img" crossorigin="anonymous">
                     <div class="rank-details">
-                        <div class="song-title">${song.title} ${badge}</div>
+                        <div class="song-title">${song.title}</div>
                         <div class="artist-name">${song.artist}</div>
                     </div>
                 `;
@@ -753,19 +698,15 @@
             });
         }
 
+        // --- EXPORT TOOLS ---
         function downloadCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,Rank,Artist,Song,Note\n";
+            let csvContent = "data:text/csv;charset=utf-8,Rank,Artist,Song\n";
             const items = document.querySelectorAll('.ranking-item');
             items.forEach((item) => {
                 const rank = item.querySelector('.rank-num').innerText.replace('#','');
-                const title = item.querySelector('.song-title').childNodes[0].nodeValue.trim();
+                const title = item.querySelector('.song-title').innerText;
                 const artist = item.querySelector('.artist-name').innerText;
-                
-                let note = "iTunes";
-                if(item.querySelector('.uploaded-badge')) note = "Custom Audio";
-                else if(item.querySelector('.no-preview-badge')) note = "Missing Audio";
-                
-                csvContent += `${rank},"${artist}","${title}","${note}"\n`;
+                csvContent += `${rank},"${artist}","${title}"\n`;
             });
             const link = document.createElement("a");
             link.href = encodeURI(csvContent);
@@ -777,7 +718,7 @@
             let text = "🎵 My Music Ranking:\n\n";
             document.querySelectorAll('.ranking-item').forEach((item) => {
                 const rank = item.querySelector('.rank-num').innerText;
-                const title = item.querySelector('.song-title').childNodes[0].nodeValue.trim();
+                const title = item.querySelector('.song-title').innerText;
                 const artist = item.querySelector('.artist-name').innerText;
                 text += `${rank} ${artist} - ${title}\n`;
             });
