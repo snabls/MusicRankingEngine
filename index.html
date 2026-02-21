@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Ranker</title>
@@ -69,11 +67,17 @@
         .btn-upload { background: transparent; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 500px; font-size: 0.7em; text-transform: none; }
         .upload-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
 
-        /* BATTLE ARENA */
+        /* BATTLE ARENA - MIGLIORATA L'ANIMAZIONE */
         #comparison-view { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
-        .battle-arena { display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; flex-wrap: wrap; position: relative; }
-        .slide-left-out { transform: translateX(-100px); opacity: 0; }
-        .slide-enter-from-right { transform: translateX(50px) scale(0.95); opacity: 0; transition: none; }
+        
+        .battle-arena { 
+            display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; flex-wrap: wrap; position: relative; 
+            /* Animazione morbida per lo slide */
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease-out;
+        }
+        .slide-out-left { transform: translateX(-150px); opacity: 0; }
+        .slide-in-right { transform: translateX(150px); opacity: 0; transition: none; /* No transition while resetting position */ }
+
         .card { background: var(--card-bg); border-radius: 8px; padding: 20px; width: 300px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transition: background 0.2s, transform 0.2s; cursor: pointer; position: relative; }
         .card:hover { background: #282828; transform: translateY(-4px); }
         .card:active { background: #121212; transform: scale(0.98); }
@@ -94,52 +98,25 @@
         #undo-btn:hover { color: white; text-decoration: underline; background: transparent; transform: none; }
         #undo-btn:disabled { color: #333; text-decoration: none; cursor: default; }
 
-        /* --- RESULTS & IMPROVED DRAG DROP --- */
+        /* --- RESULTS --- */
         #results-view { display: none; width: 100%; max-width: 600px; padding-bottom: 50px; }
         #results-capture-area { background-color: var(--bg-color); padding: 30px 20px; border-radius: 0; }
         
         .ranking-item { 
             display: flex; align-items: center; margin-bottom: 10px; padding: 12px; 
             border-radius: 8px; background: var(--card-bg);
-            transition: all 0.2s ease-in-out;
-            border: 1px solid transparent;
+            transition: all 0.2s ease-in-out; border: 1px solid transparent;
         }
 
-        /* Edit Mode Active Styles */
-        .edit-mode .ranking-item {
-             background: #222; /* Slightly darker when inactive in edit mode */
-             border-color: #333;
-        }
-
-        /* The Draggable state (when you can grab it) */
-        .ranking-item.draggable { 
-            cursor: grab; 
-        }
-        
-        /* The "Lifted" state when actively holding/dragging */
+        .edit-mode .ranking-item { background: #222; border-color: #333; }
+        .ranking-item.draggable { cursor: grab; }
         .ranking-item.draggable:active, 
         .ranking-item.dragging { 
-            cursor: grabbing;
-            background: #2a2a2a; /* Lighter background */
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); /* Strong "lifted" shadow */
-            transform: scale(1.02); /* Slight bump up */
-            z-index: 10; /* Ensure it floats above others */
-            opacity: 1; /* Ensure full opacity */
-            border-color: var(--accent); /* Subtle green border highlight */
+            cursor: grabbing; background: #2a2a2a; box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+            transform: scale(1.02); z-index: 10; opacity: 1; border-color: var(--accent); 
         }
 
-        /* The Handle Icon */
-        .drag-handle { 
-            display: none; 
-            cursor: grab; 
-            font-size: 1.8em; /* Larger icon for mobile */
-            color: #666; 
-            padding: 5px 15px 5px 0; /* Larger tap target area */
-            user-select: none; 
-            /* CRITICAL FOR MOBILE: Prevents scrolling when touching the handle */
-            touch-action: none; 
-        }
-        
+        .drag-handle { display: none; cursor: grab; font-size: 1.8em; color: #666; padding: 5px 15px 5px 0; user-select: none; touch-action: none; }
         .drag-handle:active { cursor: grabbing; color: var(--accent); }
         .edit-mode .drag-handle { display: block; }
         .edit-mode .rank-num { color: #555; font-size: 1em; }
@@ -171,7 +148,8 @@
 
     <div id="setup-view">
         <p style="text-align:center; color: #b3b3b3; font-size: 0.9em; margin-top:-10px;">Paste your list (Artist - Song)</p>
-        <textarea id="input-list" placeholder="Oasis - Wonderwall&#10;Daft Punk - One More Time"></textarea>
+        <textarea id="input-list" placeholder="Oasis - Wonderwall
+Daft Punk - One More Time"></textarea>
         
         <button id="find-btn" onclick="initSearch()">Start Ranking</button>
         
@@ -211,7 +189,7 @@
         <div id="progress-container">
             <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
             <div class="progress-labels"><span>Start</span><span id="pct-text">0%</span><span>Finish</span></div>
-            <button id="undo-btn" onclick="handleUndo()" disabled>Undo last choice</button>
+            <button id="undo-btn" onclick="handleUndo()" disabled="">Undo last choice</button>
             <div class="controls-help">
                 <span><span class="key-badge">←</span> Left</span><span><span class="key-badge">→</span> Right</span><span><span class="key-badge">↑</span> Undo</span>
             </div>
@@ -252,6 +230,41 @@
         let audioStopTimer = null; 
         let isEditMode = false;
 
+        // --- INTEGRAZIONE SANSYNPHONY ---
+        let sanSynphonyMode = false;
+        let idMap = {}; 
+        let returnUrl = "";
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('list')) {
+                sanSynphonyMode = true;
+                if (urlParams.has('return_url')) {
+                    returnUrl = urlParams.get('return_url');
+                }
+
+                const rawList = urlParams.get('list');
+                const lines = rawList.split('\n');
+                let displayList = "";
+
+                lines.forEach(line => {
+                    if(line.trim() !== '') {
+                        const parts = line.split('|');
+                        if (parts.length === 2) {
+                            const dbId = parts[0];
+                            const songName = parts[1];
+                            idMap[songName.trim().toLowerCase()] = dbId;
+                            displayList += songName + "\n";
+                        }
+                    }
+                });
+
+                document.getElementById('input-list').value = displayList;
+                // Puoi decommentare la riga sotto per saltare il tasto "Start Ranking"
+                // initSearch();
+            }
+        };
+
         // --- 1. STRICT DATA FETCHER ---
         async function fetchSongData(line) {
             let cleanQuery = line.replace(/official video|lyrics|audio|official|ft\.|feat\.|prod\./gi, '').replace('-', ' ').trim();
@@ -262,8 +275,12 @@
             let userTitle = parts[1] ? parts.slice(1).join('-').trim() : line;
             const userArtistTokens = userArtist.toLowerCase().split(/[\s-]+/).filter(t => t.length > 2);
 
+            const lookupKey = line.trim().toLowerCase();
+            const originalDbId = idMap[lookupKey] || null;
+
             const manualObj = {
                 id: "manual_" + Math.random().toString(36).substr(2, 9),
+                dbId: originalDbId,
                 title: userTitle, artist: userArtist, cover: GENERIC_COVER,
                 preview: null, found: false, custom: false, randomStart: 0 
             };
@@ -302,6 +319,7 @@
 
                     return {
                         id: match.trackId.toString(),
+                        dbId: originalDbId,
                         title: match.trackName,
                         artist: match.artistName,
                         cover: match.artworkUrl100.replace('100x100bb', '600x600bb'),
@@ -372,7 +390,7 @@
             }
         }
 
-        // --- 3. BATTLE ENGINE ---
+        // --- 3. BATTLE ENGINE & ANIMATIONS ---
         function startBattle() {
             const n = songs.length;
             estimatedTotalComparisons = n * Math.ceil(Math.log2(n)); 
@@ -415,11 +433,18 @@
         function presentBattle(songA, songB) {
             currentPair = { a: songA, b: songB };
             const arena = document.getElementById('arena');
-            arena.classList.remove('slide-left-out');
-            arena.classList.add('slide-enter-from-right');
+            
+            // Set up items outside screen to the right
+            arena.classList.remove('slide-out-left');
+            arena.classList.add('slide-in-right');
+            
             updateCard('a', songA); updateCard('b', songB);
             stopAudio(); updateProgressBar();
-            requestAnimationFrame(() => requestAnimationFrame(() => arena.classList.remove('slide-enter-from-right')));
+            
+            // Force browser reflow, then animate them sliding in smoothly
+            void arena.offsetWidth; 
+            arena.classList.remove('slide-in-right');
+            
             document.getElementById('undo-btn').disabled = (historyStack.length === 0);
         }
 
@@ -429,7 +454,11 @@
             const key = currentPair.a.id < currentPair.b.id ? `${currentPair.a.id}-${currentPair.b.id}` : `${currentPair.b.id}-${currentPair.a.id}`;
             decisionMap.set(key, winner.id);
             historyStack.push(key);
-            document.getElementById('arena').classList.add('slide-left-out');
+            
+            // Slide current items out to the left
+            document.getElementById('arena').classList.add('slide-out-left');
+            
+            // Wait for animation to finish before generating next pair
             setTimeout(() => runEngine(), 300);
         }
 
@@ -503,7 +532,7 @@
             }
         }
 
-        // --- 6. RESULTS & CLEANER MOBILE DRAG DROP ---
+        // --- 6. RESULTS & INTEGRATION ---
         function showResults(rankedList) {
             document.removeEventListener('keydown', handleKeyInput);
             document.getElementById('comparison-view').style.display = 'none';
@@ -544,6 +573,52 @@
                 if (afterElement == null) { container.appendChild(draggable); } 
                 else { container.insertBefore(draggable, afterElement); }
             });
+
+            // SANSYNPHONY: Inject dynamic send button
+            if (sanSynphonyMode) {
+                const actionsContainer = document.querySelector('.actions-container');
+                // Remove it if it already exists to prevent duplicates on redraw
+                const existingBtn = document.getElementById('sanSynphonySubmit');
+                if (existingBtn) existingBtn.remove();
+
+                const orderedDbIds = rankedList.map(s => s.dbId).filter(id => id != null).join(',');
+                
+                const formHTML = `
+                    <div id="sanSynphonySubmit" class="full-width" style="margin-top:20px; border-top:1px solid #333; padding-top:20px;">
+                        <button onclick="sendToSanSynphony('${orderedDbIds}')" style="background: linear-gradient(135deg, #8b5cf6, #d946ef); width:100%; box-shadow: 0 4px 15px rgba(217, 70, 239, 0.3);">
+                            🚀 INVIA CLASSIFICA A SANSYNPHONY
+                        </button>
+                    </div>
+                `;
+                actionsContainer.insertAdjacentHTML('beforeend', formHTML);
+            }
+        }
+
+        function sendToSanSynphony(idString) {
+            if (!returnUrl) {
+                alert("Errore: Indirizzo di ritorno non trovato.");
+                return;
+            }
+            if (confirm("Questa sarà la tua classifica definitiva.\nSei sicuro di volerla inviare?")) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = returnUrl;
+
+                const inputIds = document.createElement('input');
+                inputIds.type = 'hidden';
+                inputIds.name = 'sorted_ids';
+                inputIds.value = idString;
+                form.appendChild(inputIds);
+
+                const inputTrigger = document.createElement('input');
+                inputTrigger.type = 'hidden';
+                inputTrigger.name = 'invia_voto_drag'; 
+                inputTrigger.value = '1';
+                form.appendChild(inputTrigger);
+
+                document.body.appendChild(form);
+                form.submit(); 
+            }
         }
 
         function toggleEditMode() {
@@ -557,14 +632,20 @@
                 btn.classList.add('active');
                 btn.innerHTML = "💾 Save Order";
                 items.forEach(item => item.draggable = true);
+                
+                // Hide SanSynphony button during edit to prevent accidental submission
+                const ssBtn = document.getElementById('sanSynphonySubmit');
+                if (ssBtn) ssBtn.style.display = 'none';
+
             } else {
                 container.classList.remove('edit-mode');
                 btn.classList.remove('active');
                 btn.innerHTML = "✏️ Modify Order";
                 items.forEach(item => item.draggable = false);
+                
                 const newOrderIds = Array.from(document.querySelectorAll('.ranking-item')).map(el => el.getAttribute('data-id'));
                 finalRankedList = newOrderIds.map(id => finalRankedList.find(s => s.id === id));
-                showResults(finalRankedList);
+                showResults(finalRankedList); // Redraws everything including SanSynphony button with new ID string
             }
         }
 
@@ -615,5 +696,5 @@
             });
         }
     </script>
-</body>
-</html>
+
+</body></html>
