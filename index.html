@@ -79,17 +79,7 @@
         .upload-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
 
         /* Tasto Cestino */
-        .btn-delete {
-            background: transparent;
-            border: 1px solid #e91429;
-            color: #e91429;
-            padding: 5px 10px;
-            border-radius: 500px;
-            font-size: 0.7em;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-left: 5px;
-        }
+        .btn-delete { background: transparent; border: 1px solid #e91429; color: #e91429; padding: 5px 10px; border-radius: 500px; font-size: 0.7em; cursor: pointer; transition: all 0.2s; margin-left: 5px; }
         .btn-delete:hover { background: #e91429; color: white; }
 
         /* BATTLE ARENA */
@@ -155,7 +145,6 @@
     <h1>Music Ranker <span>Pro</span></h1>
 
     <div id="setup-view">
-        
         <div class="spotify-import-box">
             <p style="margin: 0; font-size: 1.1em; color: white; font-weight: bold;">Import from Spotify</p>
             <p style="margin: 5px 0 0 0; font-size: 0.8em; color: var(--secondary-text);">Paste a public playlist URL to instantly load the tracks.</p>
@@ -282,26 +271,30 @@ Daft Punk - One More Time"></textarea>
             }
         };
 
-        // --- SPOTIFY LOGIC ---
-        function checkSpotifyAuth() {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-                const params = new URLSearchParams(hash.substring(1));
-                const token = params.get('access_token');
-                
-                sessionStorage.setItem('spotify_token', token);
-                window.history.replaceState(null, null, window.location.pathname + window.location.search);
-
-                const pendingUrl = sessionStorage.getItem('pending_spotify_url');
-                if (pendingUrl) {
-                    document.getElementById('spotify-url').value = pendingUrl;
-                    sessionStorage.removeItem('pending_spotify_url');
-                    fetchSpotifyPlaylist(pendingUrl, token);
-                }
+        // --- SPOTIFY PKCE LOGIC ---
+        function generateRandomString(length) {
+            let text = '';
+            let possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            for (let i = 0; i < length; i++) {
+                text += possible.charAt(Math.floor(Math.random() * possible.length));
             }
+            return text;
         }
 
-        function handleSpotifyImport() {
+        async function generateCodeChallenge(codeVerifier) {
+            function base64encode(string) {
+                return btoa(String.fromCharCode.apply(null, new Uint8Array(string)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+            }
+            const encoder = new TextEncoder();
+            const data = encoder.encode(codeVerifier);
+            const digest = await window.crypto.subtle.digest('SHA-256', data);
+            return base64encode(digest);
+        }
+
+        async function handleSpotifyImport() {
             const urlInput = document.getElementById('spotify-url').value.trim();
             if (!urlInput) {
                 alert("Paste a Spotify Playlist link first!");
@@ -310,11 +303,66 @@ Daft Punk - One More Time"></textarea>
 
             const token = sessionStorage.getItem('spotify_token');
             if (!token) {
+                // Inizia il flusso PKCE
                 sessionStorage.setItem('pending_spotify_url', urlInput);
-                const authUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(SPOTIFY_REDIRECT_URI)}&scope=playlist-read-private`;
-                window.location.href = authUrl;
+                const codeVerifier = generateRandomString(128);
+                sessionStorage.setItem('code_verifier', codeVerifier);
+                
+                const codeChallenge = await generateCodeChallenge(codeVerifier);
+                const args = new URLSearchParams({
+                    response_type: 'code',
+                    client_id: SPOTIFY_CLIENT_ID,
+                    scope: 'playlist-read-private playlist-read-collaborative',
+                    redirect_uri: SPOTIFY_REDIRECT_URI,
+                    code_challenge_method: 'S256',
+                    code_challenge: codeChallenge
+                });
+                window.location = 'https://accounts.spotify.com/authorize?' + args;
             } else {
                 fetchSpotifyPlaylist(urlInput, token);
+            }
+        }
+
+        async function checkSpotifyAuth() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+
+            if (code) {
+                // Scambio il codice con il token
+                let codeVerifier = sessionStorage.getItem('code_verifier');
+                const body = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code: code,
+                    redirect_uri: SPOTIFY_REDIRECT_URI,
+                    client_id: SPOTIFY_CLIENT_ID,
+                    code_verifier: codeVerifier
+                });
+
+                try {
+                    const response = await fetch('https://accounts.spotify.com/api/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: body
+                    });
+                    
+                    if(!response.ok) throw new Error("HTTP status " + response.status);
+                    const data = await response.json();
+                    
+                    sessionStorage.setItem('spotify_token', data.access_token);
+                    
+                    // Ripulisce l'URL
+                    window.history.replaceState(null, null, window.location.pathname);
+
+                    const pendingUrl = sessionStorage.getItem('pending_spotify_url');
+                    if (pendingUrl) {
+                        document.getElementById('spotify-url').value = pendingUrl;
+                        sessionStorage.removeItem('pending_spotify_url');
+                        fetchSpotifyPlaylist(pendingUrl, data.access_token);
+                    }
+                } catch(err) {
+                    console.error('Error exchanging token', err);
+                    alert("Error authenticating with Spotify.");
+                }
             }
         }
 
@@ -470,7 +518,6 @@ Daft Punk - One More Time"></textarea>
                 container.appendChild(div);
             });
 
-            // Controllo sicurezza
             const startBtn = document.getElementById('start-battle-btn');
             if (startBtn) {
                 if (songs.length < 2) {
@@ -690,7 +737,6 @@ Daft Punk - One More Time"></textarea>
                 else { container.insertBefore(draggable, afterElement); }
             });
 
-            // SANSYNPHONY BUTTON
             if (sanSynphonyMode) {
                 const actionsContainer = document.querySelector('.actions-container');
                 const existingBtn = document.getElementById('sanSynphonySubmit');
@@ -760,7 +806,6 @@ Daft Punk - One More Time"></textarea>
             ranks.forEach((span, idx) => span.innerText = `#${idx + 1}`);
         }
 
-        // --- EXPORT TOOLS ---
         function downloadCSV() {
             let csvContent = "data:text/csv;charset=utf-8,Rank,Artist,Song\n";
             finalRankedList.forEach((song, index) => { csvContent += `${index + 1},"${song.artist}","${song.title}"\n`; });
