@@ -1,7 +1,7 @@
 <html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Ranker</title>
+    <title>Music Ranker Pro</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         /* --- 1. THEME: SPOTIFY DARK MODE --- */
@@ -34,6 +34,16 @@
         /* INPUT AREA */
         #setup-view { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 15px; }
         
+        .spotify-import-box { background: #242424; padding: 20px; border-radius: 8px; border: 1px solid #333; }
+        .spotify-input-row { display: flex; gap: 10px; margin-top: 10px; }
+        .spotify-input-row input { flex-grow: 1; padding: 12px; border-radius: 500px; border: none; background: #333; color: white; outline: none; padding-left: 20px;}
+        .spotify-input-row input:focus { box-shadow: 0 0 0 2px var(--accent); }
+        
+        .divider { display: flex; align-items: center; text-align: center; color: var(--secondary-text); font-size: 0.8em; margin: 10px 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #333; }
+        .divider:not(:empty)::before { margin-right: .5em; }
+        .divider:not(:empty)::after { margin-left: .5em; }
+
         textarea {
             width: 100%; height: 200px; background: #242424; 
             border: 1px solid transparent; color: var(--text); padding: 15px;
@@ -51,7 +61,7 @@
         button:hover { background-color: var(--accent-hover); transform: scale(1.02); }
         button:disabled { background-color: #555; color: #888; cursor: not-allowed; transform: none; }
 
-        /* PREP VIEW */
+        /* PREP VIEW & DELETE BUTTON */
         #prep-view { display: none; width: 100%; max-width: 700px; flex-direction: column; gap: 20px; }
         .prep-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 5px; }
         .prep-item { display: flex; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 4px; }
@@ -63,20 +73,30 @@
         .status-badge { font-size: 0.7em; padding: 3px 6px; border-radius: 2px; font-weight: bold; text-transform: uppercase; }
         .status-badge.ok { color: var(--accent); border: 1px solid var(--accent); }
         .status-badge.missing { color: #e91429; border: 1px solid #e91429; }
+        
         .upload-wrapper { position: relative; overflow: hidden; display: inline-block; }
         .btn-upload { background: transparent; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 500px; font-size: 0.7em; text-transform: none; }
         .upload-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
 
-        /* BATTLE ARENA - MIGLIORATA L'ANIMAZIONE */
-        #comparison-view { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
-        
-        .battle-arena { 
-            display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; flex-wrap: wrap; position: relative; 
-            /* Animazione morbida per lo slide */
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease-out;
+        /* Tasto Cestino */
+        .btn-delete {
+            background: transparent;
+            border: 1px solid #e91429;
+            color: #e91429;
+            padding: 5px 10px;
+            border-radius: 500px;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 5px;
         }
+        .btn-delete:hover { background: #e91429; color: white; }
+
+        /* BATTLE ARENA */
+        #comparison-view { display: none; width: 100%; max-width: 900px; flex-direction: column; align-items: center; }
+        .battle-arena { display: flex; justify-content: center; align-items: center; gap: 40px; width: 100%; flex-wrap: wrap; position: relative; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease-out; }
         .slide-out-left { transform: translateX(-150px); opacity: 0; }
-        .slide-in-right { transform: translateX(150px); opacity: 0; transition: none; /* No transition while resetting position */ }
+        .slide-in-right { transform: translateX(150px); opacity: 0; transition: none; }
 
         .card { background: var(--card-bg); border-radius: 8px; padding: 20px; width: 300px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transition: background 0.2s, transform 0.2s; cursor: pointer; position: relative; }
         .card:hover { background: #282828; transform: translateY(-4px); }
@@ -102,25 +122,14 @@
         #results-view { display: none; width: 100%; max-width: 600px; padding-bottom: 50px; }
         #results-capture-area { background-color: var(--bg-color); padding: 30px 20px; border-radius: 0; }
         
-        .ranking-item { 
-            display: flex; align-items: center; margin-bottom: 10px; padding: 12px; 
-            border-radius: 8px; background: var(--card-bg);
-            transition: all 0.2s ease-in-out; border: 1px solid transparent;
-        }
-
+        .ranking-item { display: flex; align-items: center; margin-bottom: 10px; padding: 12px; border-radius: 8px; background: var(--card-bg); transition: all 0.2s ease-in-out; border: 1px solid transparent; }
         .edit-mode .ranking-item { background: #222; border-color: #333; }
         .ranking-item.draggable { cursor: grab; }
-        .ranking-item.draggable:active, 
-        .ranking-item.dragging { 
-            cursor: grabbing; background: #2a2a2a; box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
-            transform: scale(1.02); z-index: 10; opacity: 1; border-color: var(--accent); 
-        }
-
+        .ranking-item.draggable:active, .ranking-item.dragging { cursor: grabbing; background: #2a2a2a; box-shadow: 0 10px 25px rgba(0,0,0,0.5); transform: scale(1.02); z-index: 10; opacity: 1; border-color: var(--accent); }
         .drag-handle { display: none; cursor: grab; font-size: 1.8em; color: #666; padding: 5px 15px 5px 0; user-select: none; touch-action: none; }
         .drag-handle:active { cursor: grabbing; color: var(--accent); }
         .edit-mode .drag-handle { display: block; }
         .edit-mode .rank-num { color: #555; font-size: 1em; }
-
         .rank-num { font-size: 1.5em; font-weight: 700; width: 40px; color: var(--accent); text-align: center; margin-right: 5px;}
         .rank-img { width: 50px; height: 50px; margin-right: 15px; object-fit: cover; pointer-events: none; border-radius: 4px;}
         .rank-details { flex-grow: 1; pointer-events: none; }
@@ -132,7 +141,6 @@
         .btn-edit { background-color: #333; color: white; border: 1px solid #333; transition: all 0.3s;}
         .btn-edit.active { background-color: var(--accent); color: black; border-color: var(--accent); box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3); }
 
-        /* UTILS */
         .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; margin: 20px auto; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .error-log { color: #e91429; font-size: 0.9em; margin-top: 10px; white-space: pre-wrap; text-align: center;}
@@ -147,7 +155,20 @@
     <h1>Music Ranker <span>Pro</span></h1>
 
     <div id="setup-view">
-        <p style="text-align:center; color: #b3b3b3; font-size: 0.9em; margin-top:-10px;">Paste your list (Artist - Song)</p>
+        
+        <div class="spotify-import-box">
+            <p style="margin: 0; font-size: 1.1em; color: white; font-weight: bold;">Import from Spotify</p>
+            <p style="margin: 5px 0 0 0; font-size: 0.8em; color: var(--secondary-text);">Paste a public playlist URL to instantly load the tracks.</p>
+            <div class="spotify-input-row">
+                <input type="text" id="spotify-url" placeholder="https://open.spotify.com/playlist/...">
+                <button onclick="handleSpotifyImport()" style="padding: 12px 20px;">Import</button>
+            </div>
+            <div id="spotify-loader" class="loader" style="width:16px; height:16px; margin: 10px auto 0 auto;"></div>
+            <div id="spotify-msg" style="text-align: center; color: var(--accent); font-size: 0.8em; margin-top: 10px;"></div>
+        </div>
+
+        <div class="divider">OR TYPE MANUALLY</div>
+
         <textarea id="input-list" placeholder="Oasis - Wonderwall
 Daft Punk - One More Time"></textarea>
         
@@ -160,14 +181,13 @@ Daft Punk - One More Time"></textarea>
 
     <div id="prep-view">
         <h2 style="margin-bottom: 5px;">Review Tracks</h2>
-        <p style="text-align:center; font-size:0.9em; color:#b3b3b3; margin-bottom: 20px;">Upload audio for missing tracks. All previews limited to 15s.</p>
+        <p style="text-align:center; font-size:0.9em; color:#b3b3b3; margin-bottom: 20px;">Upload audio for missing tracks or delete unwanted songs. Previews limited to 15s.</p>
         <div class="prep-list" id="prep-list-container"></div>
-        <button onclick="startBattle()" style="margin-top: 20px; width: 100%;">Let's Go</button>
+        <button id="start-battle-btn" onclick="startBattle()" style="margin-top: 20px; width: 100%;">Let's Go</button>
     </div>
 
     <div id="comparison-view">
         <h2 id="battle-title" style="margin-bottom: 40px; font-size: 1.5em;">Choose your favorite</h2>
-        
         <div class="battle-arena" id="arena">
             <div class="card" id="card-a" onclick="handleChoice('a')">
                 <img src="" id="img-a" crossorigin="anonymous">
@@ -185,7 +205,6 @@ Daft Punk - One More Time"></textarea>
                 <audio id="audio-b"></audio>
             </div>
         </div>
-        
         <div id="progress-container">
             <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
             <div class="progress-labels"><span>Start</span><span id="pct-text">0%</span><span>Finish</span></div>
@@ -198,14 +217,9 @@ Daft Punk - One More Time"></textarea>
 
     <div id="results-view">
         <h2 style="text-align: center; margin-bottom: 30px;">Final Ranking</h2>
-        
-        <div id="results-capture-area">
-            <div id="results-list"></div>
-        </div>
-
+        <div id="results-capture-area"><div id="results-list"></div></div>
         <div class="actions-container">
             <button onclick="toggleEditMode()" id="edit-btn" class="btn-edit full-width">✏️ Modify Order</button>
-            
             <button onclick="downloadImage()">Save Image</button>
             <button onclick="downloadCSV()" class="btn-secondary">Export CSV</button>
             <button onclick="copyToClipboard()" class="btn-secondary full-width">Copy List</button>
@@ -217,6 +231,10 @@ Daft Punk - One More Time"></textarea>
         // --- CONFIGURATION ---
         const GENERIC_COVER = "https://cdn-icons-png.flaticon.com/512/26/26805.png";
         const PREVIEW_DURATION = 15;
+        
+        // CHIAVI SPOTIFY 
+        const SPOTIFY_CLIENT_ID = '6cf35a5304f644e09dbf9ac77fc780af';
+        const SPOTIFY_REDIRECT_URI = 'https://snabls.github.io/MusicRankingEngine/';
 
         // --- GLOBAL STATE ---
         let songs = [];
@@ -236,13 +254,13 @@ Daft Punk - One More Time"></textarea>
         let returnUrl = "";
 
         window.onload = function() {
+            checkSpotifyAuth();
+
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('list')) {
                 sanSynphonyMode = true;
-                if (urlParams.has('return_url')) {
-                    returnUrl = urlParams.get('return_url');
-                }
-
+                if (urlParams.has('return_url')) returnUrl = urlParams.get('return_url');
+                
                 const rawList = urlParams.get('list');
                 const lines = rawList.split('\n');
                 let displayList = "";
@@ -258,12 +276,104 @@ Daft Punk - One More Time"></textarea>
                         }
                     }
                 });
-
                 document.getElementById('input-list').value = displayList;
-                // Puoi decommentare la riga sotto per saltare il tasto "Start Ranking"
-                // initSearch();
+                document.querySelector('.spotify-import-box').style.display = 'none';
+                document.querySelector('.divider').style.display = 'none';
             }
         };
+
+        // --- SPOTIFY LOGIC ---
+        function checkSpotifyAuth() {
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token')) {
+                const params = new URLSearchParams(hash.substring(1));
+                const token = params.get('access_token');
+                
+                sessionStorage.setItem('spotify_token', token);
+                window.history.replaceState(null, null, window.location.pathname + window.location.search);
+
+                const pendingUrl = sessionStorage.getItem('pending_spotify_url');
+                if (pendingUrl) {
+                    document.getElementById('spotify-url').value = pendingUrl;
+                    sessionStorage.removeItem('pending_spotify_url');
+                    fetchSpotifyPlaylist(pendingUrl, token);
+                }
+            }
+        }
+
+        function handleSpotifyImport() {
+            const urlInput = document.getElementById('spotify-url').value.trim();
+            if (!urlInput) {
+                alert("Paste a Spotify Playlist link first!");
+                return;
+            }
+
+            const token = sessionStorage.getItem('spotify_token');
+            if (!token) {
+                sessionStorage.setItem('pending_spotify_url', urlInput);
+                const authUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(SPOTIFY_REDIRECT_URI)}&scope=playlist-read-private`;
+                window.location.href = authUrl;
+            } else {
+                fetchSpotifyPlaylist(urlInput, token);
+            }
+        }
+
+        async function fetchSpotifyPlaylist(playlistUrl, token) {
+            const match = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+            if (!match) {
+                alert("Invalid Spotify URL. Make sure it contains '/playlist/ID'");
+                return;
+            }
+            const playlistId = match[1];
+
+            document.getElementById('spotify-loader').style.display = 'block';
+            document.getElementById('spotify-msg').innerText = "Importing tracks...";
+            document.getElementById('find-btn').disabled = true;
+
+            try {
+                let allTracks = [];
+                let nextUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?fields=items(track(name,artists(name))),next&limit=100`;
+
+                while (nextUrl) {
+                    const res = await fetch(nextUrl, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (res.status === 401) {
+                        sessionStorage.removeItem('spotify_token');
+                        handleSpotifyImport();
+                        return;
+                    }
+
+                    if (!res.ok) throw new Error("API Error");
+
+                    const data = await res.json();
+                    data.items.forEach(item => {
+                        if (item.track && item.track.name) {
+                            const artistNames = item.track.artists.map(a => a.name).join(', ');
+                            allTracks.push(`${artistNames} - ${item.track.name}`);
+                        }
+                    });
+                    nextUrl = data.next;
+                }
+
+                if (allTracks.length > 0) {
+                    const textarea = document.getElementById('input-list');
+                    const existing = textarea.value.trim();
+                    textarea.value = (existing ? existing + '\n' : '') + allTracks.join('\n');
+                    document.getElementById('spotify-msg').innerText = `✅ Successfully added ${allTracks.length} tracks!`;
+                    document.getElementById('spotify-url').value = '';
+                } else {
+                    document.getElementById('spotify-msg').innerText = "Playlist is empty.";
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('spotify-msg').innerText = "❌ Error fetching playlist.";
+            } finally {
+                document.getElementById('spotify-loader').style.display = 'none';
+                document.getElementById('find-btn').disabled = false;
+            }
+        }
 
         // --- 1. STRICT DATA FETCHER ---
         async function fetchSongData(line) {
@@ -286,7 +396,7 @@ Daft Punk - One More Time"></textarea>
             };
 
             try {
-                const url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&media=music&limit=10&entity=song&country=IT&explicit=Yes`;
+                const url = `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&media=music&limit=10&entity=song&country=IT`;
                 const res = await fetch(url);
                 const data = await res.json();
 
@@ -305,23 +415,14 @@ Daft Punk - One More Time"></textarea>
                         });
                     }
 
-                    if (userArtistTokens.length > 0) {
-                        candidates = candidates.filter(t => {
-                            const resArtist = t.artistName.toLowerCase();
-                            return userArtistTokens.some(token => resArtist.includes(token));
-                        });
-                    }
-
                     if (candidates.length === 0) return manualObj; 
 
                     let match = candidates.find(t => t.previewUrl);
                     if (!match) match = candidates[0];
 
                     return {
-                        id: match.trackId.toString(),
-                        dbId: originalDbId,
-                        title: match.trackName,
-                        artist: match.artistName,
+                        id: match.trackId.toString(), dbId: originalDbId,
+                        title: match.trackName, artist: match.artistName,
                         cover: match.artworkUrl100.replace('100x100bb', '600x600bb'),
                         preview: match.previewUrl, found: true, custom: false, randomStart: 0
                     };
@@ -357,14 +458,34 @@ Daft Punk - One More Time"></textarea>
                 const div = document.createElement('div');
                 div.className = 'prep-item';
                 let statusBadge = song.preview ? `<span class="status-badge ok" id="badge-${song.id}">Audio Ready</span>` : `<span class="status-badge missing" id="badge-${song.id}">No Audio</span>`;
+                
                 div.innerHTML = `
                     <img src="${song.cover}" crossorigin="anonymous">
                     <div class="prep-info"><div class="prep-title">${song.title}</div><div class="prep-artist">${song.artist}</div></div>
-                    <div class="prep-status">${statusBadge}
-                        <div class="upload-wrapper"><button class="btn-upload">Upload File</button><input type="file" accept="audio/*" onchange="handleFileUpload(event, '${song.id}')"></div>
+                    <div class="prep-status">
+                        ${statusBadge}
+                        <div class="upload-wrapper"><button class="btn-upload">Upload</button><input type="file" accept="audio/*" onchange="handleFileUpload(event, '${song.id}')"></div>
+                        <button class="btn-delete" onclick="removeSong('${song.id}')" title="Remove track">🗑️</button>
                     </div>`;
                 container.appendChild(div);
             });
+
+            // Controllo sicurezza
+            const startBtn = document.getElementById('start-battle-btn');
+            if (startBtn) {
+                if (songs.length < 2) {
+                    startBtn.disabled = true;
+                    startBtn.innerText = "Need at least 2 songs";
+                } else {
+                    startBtn.disabled = false;
+                    startBtn.innerText = "Let's Go";
+                }
+            }
+        }
+
+        function removeSong(songId) {
+            songs = songs.filter(s => s.id !== songId);
+            renderPrepList();
         }
 
         function handleFileUpload(event, songId) {
@@ -434,14 +555,12 @@ Daft Punk - One More Time"></textarea>
             currentPair = { a: songA, b: songB };
             const arena = document.getElementById('arena');
             
-            // Set up items outside screen to the right
             arena.classList.remove('slide-out-left');
             arena.classList.add('slide-in-right');
             
             updateCard('a', songA); updateCard('b', songB);
             stopAudio(); updateProgressBar();
             
-            // Force browser reflow, then animate them sliding in smoothly
             void arena.offsetWidth; 
             arena.classList.remove('slide-in-right');
             
@@ -455,10 +574,7 @@ Daft Punk - One More Time"></textarea>
             decisionMap.set(key, winner.id);
             historyStack.push(key);
             
-            // Slide current items out to the left
             document.getElementById('arena').classList.add('slide-out-left');
-            
-            // Wait for animation to finish before generating next pair
             setTimeout(() => runEngine(), 300);
         }
 
@@ -574,10 +690,9 @@ Daft Punk - One More Time"></textarea>
                 else { container.insertBefore(draggable, afterElement); }
             });
 
-            // SANSYNPHONY: Inject dynamic send button
+            // SANSYNPHONY BUTTON
             if (sanSynphonyMode) {
                 const actionsContainer = document.querySelector('.actions-container');
-                // Remove it if it already exists to prevent duplicates on redraw
                 const existingBtn = document.getElementById('sanSynphonySubmit');
                 if (existingBtn) existingBtn.remove();
 
@@ -595,29 +710,16 @@ Daft Punk - One More Time"></textarea>
         }
 
         function sendToSanSynphony(idString) {
-            if (!returnUrl) {
-                alert("Errore: Indirizzo di ritorno non trovato.");
-                return;
-            }
+            if (!returnUrl) { alert("Errore: Indirizzo di ritorno non trovato."); return; }
             if (confirm("Questa sarà la tua classifica definitiva.\nSei sicuro di volerla inviare?")) {
                 const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = returnUrl;
-
+                form.method = 'POST'; form.action = returnUrl;
                 const inputIds = document.createElement('input');
-                inputIds.type = 'hidden';
-                inputIds.name = 'sorted_ids';
-                inputIds.value = idString;
-                form.appendChild(inputIds);
-
+                inputIds.type = 'hidden'; inputIds.name = 'sorted_ids'; inputIds.value = idString;
                 const inputTrigger = document.createElement('input');
-                inputTrigger.type = 'hidden';
-                inputTrigger.name = 'invia_voto_drag'; 
-                inputTrigger.value = '1';
-                form.appendChild(inputTrigger);
-
-                document.body.appendChild(form);
-                form.submit(); 
+                inputTrigger.type = 'hidden'; inputTrigger.name = 'invia_voto_drag'; inputTrigger.value = '1';
+                form.appendChild(inputIds); form.appendChild(inputTrigger);
+                document.body.appendChild(form); form.submit(); 
             }
         }
 
@@ -629,23 +731,17 @@ Daft Punk - One More Time"></textarea>
 
             if(isEditMode) {
                 container.classList.add('edit-mode');
-                btn.classList.add('active');
-                btn.innerHTML = "💾 Save Order";
+                btn.classList.add('active'); btn.innerHTML = "💾 Save Order";
                 items.forEach(item => item.draggable = true);
-                
-                // Hide SanSynphony button during edit to prevent accidental submission
                 const ssBtn = document.getElementById('sanSynphonySubmit');
                 if (ssBtn) ssBtn.style.display = 'none';
-
             } else {
                 container.classList.remove('edit-mode');
-                btn.classList.remove('active');
-                btn.innerHTML = "✏️ Modify Order";
+                btn.classList.remove('active'); btn.innerHTML = "✏️ Modify Order";
                 items.forEach(item => item.draggable = false);
-                
                 const newOrderIds = Array.from(document.querySelectorAll('.ranking-item')).map(el => el.getAttribute('data-id'));
                 finalRankedList = newOrderIds.map(id => finalRankedList.find(s => s.id === id));
-                showResults(finalRankedList); // Redraws everything including SanSynphony button with new ID string
+                showResults(finalRankedList); 
             }
         }
 
@@ -667,20 +763,14 @@ Daft Punk - One More Time"></textarea>
         // --- EXPORT TOOLS ---
         function downloadCSV() {
             let csvContent = "data:text/csv;charset=utf-8,Rank,Artist,Song\n";
-            finalRankedList.forEach((song, index) => {
-                csvContent += `${index + 1},"${song.artist}","${song.title}"\n`;
-            });
+            finalRankedList.forEach((song, index) => { csvContent += `${index + 1},"${song.artist}","${song.title}"\n`; });
             const link = document.createElement("a");
-            link.href = encodeURI(csvContent);
-            link.download = "music_ranking.csv";
-            link.click();
+            link.href = encodeURI(csvContent); link.download = "music_ranking.csv"; link.click();
         }
 
         function copyToClipboard() {
             let text = "🎵 My Music Ranking:\n\n";
-            finalRankedList.forEach((song, index) => {
-                text += `#${index + 1} ${song.artist} - ${song.title}\n`;
-            });
+            finalRankedList.forEach((song, index) => { text += `#${index + 1} ${song.artist} - ${song.title}\n`; });
             navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
         }
 
@@ -690,11 +780,8 @@ Daft Punk - One More Time"></textarea>
             const element = document.getElementById("results-capture-area");
             html2canvas(element, { useCORS: true, backgroundColor: "#121212", scale: 2 }).then(canvas => {
                 const link = document.createElement("a");
-                link.download = "music_ranking.jpg";
-                link.href = canvas.toDataURL("image/jpeg", 0.9);
-                link.click();
+                link.download = "music_ranking.jpg"; link.href = canvas.toDataURL("image/jpeg", 0.9); link.click();
             });
         }
     </script>
-
 </body></html>
